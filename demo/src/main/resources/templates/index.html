@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>書籍管理システム</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <!-- jQueryの読み込み -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- CSRFトークンの取得用メタタグ -->
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+</head>
+<body>
+    <header>
+        <h1>書籍管理システム</h1>
+    </header>
+
+    <main>
+        <!-- 新規登録ボタン -->
+        <div class="action-buttons">
+            <button id="newBookBtn" class="btn-primary">新規登録</button>
+        </div>
+
+        <!-- 書籍一覧テーブル -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>タイトル</th>
+                        <th>著者</th>
+                        <th>カテゴリ</th>
+                        <th>出版日</th>
+                        <th>価格</th>
+                        <th>状態</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="bookList">
+                    <tr th:each="book : ${books}">
+                        <td th:text="${book.title}"></td>
+                        <td th:text="${book.author}"></td>
+                        <td th:text="${book.category}"></td>
+                        <td th:text="${#temporals.format(book.publishDate, 'yyyy-MM-dd')}"></td>
+                        <td th:text="${#numbers.formatDecimal(book.price, 0, 'COMMA', 0, 'POINT')}"></td>
+                        <td th:text="${book.status == 0 ? '貸出可能' : '貸出中'}"></td>
+                        <td class="action-cell">
+                            <button class="btn-edit" th:attr="data-id=${book.bookId}">編集</button>
+                            <button class="btn-delete" th:attr="data-id=${book.bookId}">削除</button>
+                            <button th:if="${book.status == 0}" class="btn-borrow" th:attr="data-id=${book.bookId}">貸出</button>
+                            <button th:if="${book.status == 1}" class="btn-return" th:attr="data-id=${book.bookId}">返却</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- モーダルダイアログ（新規登録・編集用） -->
+        <div id="bookModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2 id="modalTitle">書籍情報</h2>
+                <form id="bookForm">
+                    <input type="hidden" id="bookId">
+                    <div class="form-group">
+                        <label for="title">タイトル:</label>
+                        <input type="text" id="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="author">著者:</label>
+                        <input type="text" id="author" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="category">カテゴリ:</label>
+                        <input type="text" id="category" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="publishDate">出版日:</label>
+                        <input type="date" id="publishDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="price">価格:</label>
+                        <input type="number" id="price" required min="0">
+                    </div>
+                    <button type="submit" class="btn-primary">保存</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 貸出モーダル -->
+        <div id="borrowModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>書籍貸出</h2>
+                <form id="borrowForm">
+                    <input type="hidden" id="borrowBookId">
+                    <div class="form-group">
+                        <label for="borrower">借り手:</label>
+                        <input type="text" id="borrower" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="expectedReturnDate">返却予定日:</label>
+                        <input type="date" id="expectedReturnDate" required>
+                    </div>
+                    <button type="submit" class="btn-primary">貸出</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 書籍管理システム</p>
+    </footer>
+
+    <script src="/js/script.js"></script>
+</body>
+</html>
