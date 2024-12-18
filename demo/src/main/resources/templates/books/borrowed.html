@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head">
+</head>
+<body>
+    <!-- サイドバー -->
+    <nav th:replace="fragments/layout :: sidebar"></nav>
+
+    <main>
+        <div class="search-container">
+            <div class="search-header">
+                <h1>貸出履歴</h1>
+                <p th:if="${isAdmin}">全ユーザーの貸出履歴を表示しています</p>
+                <p th:unless="${isAdmin}">現在の貸出状況と過去の貸出履歴を確認できます</p>
+            </div>
+
+            <form class="search-form" method="get" th:action="@{/books/borrowed}">
+                <div class="search-box">
+                    <input type="text" 
+                           name="keyword" 
+                           th:value="${keyword}"
+                           class="search-input"
+                           placeholder="検索キーワードを入力">
+                    <button type="submit" class="search-button">
+                        <i class="fas fa-search"></i>
+                        検索
+                    </button>
+                </div>
+                <div class="search-filters">
+                    <select name="status" class="filter-select" id="statusFilter">
+                        <option value="all" th:selected="${selectedStatus == 'all'}">すべての状態</option>
+                        <option value="current" th:selected="${selectedStatus == 'current'}">貸出中</option>
+                        <option value="returned" th:selected="${selectedStatus == 'returned'}">返却済み</option>
+                        <option value="overdue" th:selected="${selectedStatus == 'overdue'}">延滞中</option>
+                    </select>
+                    <select name="period" class="filter-select" id="periodFilter" th:data-selected="${selectedPeriod}">
+                        <option value="all">すべての期間</option>
+                        <option value="month">過去1ヶ月</option>
+                        <option value="3months">過去3ヶ月</option>
+                        <option value="6months">過去6ヶ月</option>
+                    </select>
+                </div>
+            </form>
+
+            <div class="results-container">
+                <div class="results-header" th:if="${!histories.empty}">
+                    <div class="results-count">
+                        全<span th:text="${totalPages * pageSize}">0</span>件中 
+                        <span th:text="${(currentPage - 1) * pageSize + 1}">1</span>-
+                        <span th:text="${currentPage * pageSize > totalPages * pageSize ? totalPages * pageSize : currentPage * pageSize}">5</span>件を表示
+                    </div>
+                </div>
+
+                <div th:if="${!histories.empty}">
+                    <div class="borrowed-item" th:each="history : ${histories}">
+                        <div class="book-info">
+                            <div class="user-info" th:if="${isAdmin}">
+                                <span>利用者: </span>
+                                <span class="user-name" th:text="${history.user.displayName}">表示名</span>
+                            </div>
+                            <div class="book-title" th:text="${history.book.title}">書籍タイトル</div>
+                            <div class="book-meta-container">
+                                <div class="book-meta">著者: <span th:text="${history.book.author}">著者名</span></div>
+                                <div class="book-meta">ISBN: <span th:text="${history.book.isbn}">ISBN</span></div>
+                            </div>
+                            <div class="borrow-dates">
+                                <div class="date-group">
+                                    <span class="date-label">貸出日</span>
+                                    <span class="date-value" 
+                                          th:text="${#temporals.format(history.borrowedDate, 'yyyy/MM/dd')}">
+                                        2024/01/01
+                                    </span>
+                                </div>
+                                <div class="date-group">
+                                    <span class="date-label">返却予定日</span>
+                                    <span class="date-value" 
+                                          th:text="${#temporals.format(history.expectedReturnDate, 'yyyy/MM/dd')}">
+                                        2024/01/15
+                                    </span>
+                                </div>
+                                <div class="date-group" th:if="${history.returnedDate != null}">
+                                    <span class="date-label">返却日</span>
+                                    <span class="date-value" 
+                                          th:text="${#temporals.format(history.returnedDate, 'yyyy/MM/dd')}">
+                                        2024/01/14
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="actions">
+                            <span class="status-badge" 
+                                  th:class="${history.status == T(com.example.demo.model.BorrowingHistory).STATUS_BORROWED ? 'status-badge status-borrowed' : 
+                                            history.status == T(com.example.demo.model.BorrowingHistory).STATUS_RETURNED ? 'status-badge status-returned' :
+                                            history.status == T(com.example.demo.model.BorrowingHistory).STATUS_OVERDUE ? 'status-badge status-overdue' :
+                                            'status-badge status-extended'}"
+                                  th:text="${history.status == T(com.example.demo.model.BorrowingHistory).STATUS_BORROWED ? '貸出中' : 
+                                           history.status == T(com.example.demo.model.BorrowingHistory).STATUS_RETURNED ? '返却済み' :
+                                           history.status == T(com.example.demo.model.BorrowingHistory).STATUS_OVERDUE ? '延滞中' :
+                                           '延長中'}">
+                                状態
+                            </span>
+                            <a th:href="@{/books/{id}(id=${history.bookId})}" 
+                               class="action-button secondary-action">
+                                <i class="fas fa-info-circle"></i>
+                                詳細
+                            </a>
+                            <form th:if="${history.status == T(com.example.demo.model.BorrowingHistory).STATUS_BORROWED}" 
+                                  th:action="@{/books/{id}/return(id=${history.bookId})}" 
+                                  method="post">
+                                <button type="submit" class="action-button primary-action">
+                                    <i class="fas fa-undo"></i>
+                                    返却
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- ページネーション -->
+                    <div class="pagination" th:if="${totalPages > 1}">
+                        <div class="pagination-info">
+                            <span th:text="${currentPage}">1</span> / <span th:text="${totalPages}">5</span> ページ
+                        </div>
+                        <div class="pagination-controls">
+                            <!-- 最初のページへ -->
+                            <a th:if="${currentPage > 1}"
+                               th:href="@{/books/borrowed(page=1,status=${selectedStatus},period=${selectedPeriod},keyword=${keyword})}"
+                               class="pagination-link">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                            <!-- 前のページへ -->
+                            <a th:if="${currentPage > 1}"
+                               th:href="@{/books/borrowed(page=${currentPage - 1},status=${selectedStatus},period=${selectedPeriod},keyword=${keyword})}"
+                               class="pagination-link">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                            <!-- ページ番号 -->
+                            <th:block th:each="i : ${#numbers.sequence(1, totalPages)}">
+                                <a th:if="${i >= currentPage - 2 && i <= currentPage + 2}"
+                                   th:href="@{/books/borrowed(page=${i},status=${selectedStatus},period=${selectedPeriod},keyword=${keyword})}"
+                                   th:text="${i}"
+                                   th:class="${i == currentPage ? 'pagination-link active' : 'pagination-link'}">
+                                </a>
+                            </th:block>
+                            <!-- 次のページへ -->
+                            <a th:if="${currentPage < totalPages}"
+                               th:href="@{/books/borrowed(page=${currentPage + 1},status=${selectedStatus},period=${selectedPeriod},keyword=${keyword})}"
+                               class="pagination-link">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                            <!-- 最後のページへ -->
+                            <a th:if="${currentPage < totalPages}"
+                               th:href="@{/books/borrowed(page=${totalPages},status=${selectedStatus},period=${selectedPeriod},keyword=${keyword})}"
+                               class="pagination-link">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="no-items" th:if="${histories.empty}">
+                    <i class="fas fa-book fa-3x"></i>
+                    <p>貸出履歴がありません</p>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

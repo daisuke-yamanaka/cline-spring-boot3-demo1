@@ -1,276 +1,463 @@
-// CSRFトークンの設定
-const token = $("meta[name='_csrf']").attr("content");
-const header = $("meta[name='_csrf_header']").attr("content");
-
-// Ajaxリクエストの共通設定
-$.ajaxSetup({
-    beforeSend: function(xhr) {
-        xhr.setRequestHeader(header, token);
-    }
+// ページ管理
+document.addEventListener('DOMContentLoaded', () => {
+    initializeNavigation();
+    initializeCharts();
+    setupEventListeners();
+    loadDashboardData();
+    initializeBorrowedFilters(); // 追加：貸出履歴フィルターの初期化
 });
 
-// DOM読み込み完了時の処理
-$(document).ready(function() {
-    // モーダル関連の要素
-    const bookModal = $("#bookModal");
-    const borrowModal = $("#borrowModal");
-    const closeButtons = $(".close");
-    
-    // モーダルのドラッグ機能
-    $(".modal-content").each(function() {
-        makeDraggable($(this));
+// ナビゲーション制御
+function initializeNavigation() {
+    const navLinks = document.querySelectorAll('.nav-links a');
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetPage = link.dataset.page;
+            showPage(targetPage);
+            updateActiveLink(link);
+        });
+    });
+}
+
+// 追加：URLパラメータから値を取得する関数
+function getUrlParameter(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+// 追加：貸出履歴フィルターの初期化と設定
+function initializeBorrowedFilters() {
+    const statusFilter = document.getElementById('statusFilter');
+    const periodFilter = document.getElementById('periodFilter');
+    const searchForm = document.querySelector('.search-form');
+
+    if (statusFilter) {
+        // URLパラメータまたはdata-selected属性から状態の値を取得
+        const selectedStatus = getUrlParameter('status') || statusFilter.getAttribute('data-selected') || 'all';
+        const statusOption = statusFilter.querySelector(`option[value="${selectedStatus}"]`);
+        if (statusOption) {
+            statusOption.selected = true;
+        }
+
+        // フィルター変更時のイベントリスナーを追加
+        statusFilter.addEventListener('change', () => {
+            // 現在の検索キーワードとページネーションの値を保持
+            const keyword = getUrlParameter('keyword') || '';
+            const page = getUrlParameter('page') || '1';
+            
+            // フォームのaction URLを更新
+            const baseUrl = searchForm.getAttribute('action');
+            const newUrl = `${baseUrl}?status=${statusFilter.value}&period=${periodFilter.value}&keyword=${keyword}&page=${page}`;
+            searchForm.setAttribute('action', newUrl);
+            
+            searchForm.submit();
+        });
+    }
+
+    if (periodFilter) {
+        // URLパラメータまたはdata-selected属性から期間の値を取得
+        const selectedPeriod = getUrlParameter('period') || periodFilter.getAttribute('data-selected') || 'all';
+        const periodOption = periodFilter.querySelector(`option[value="${selectedPeriod}"]`);
+        if (periodOption) {
+            periodOption.selected = true;
+        }
+
+        // フィルター変更時のイベントリスナーを追加
+        periodFilter.addEventListener('change', () => {
+            // 現在の検索キーワードとページネーションの値を保持
+            const keyword = getUrlParameter('keyword') || '';
+            const page = getUrlParameter('page') || '1';
+            
+            // フォームのaction URLを更新
+            const baseUrl = searchForm.getAttribute('action');
+            const newUrl = `${baseUrl}?status=${statusFilter.value}&period=${periodFilter.value}&keyword=${keyword}&page=${page}`;
+            searchForm.setAttribute('action', newUrl);
+            
+            searchForm.submit();
+        });
+    }
+
+    // フォーム送信時の処理を追加
+    if (searchForm) {
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // 現在の検索キーワードとページネーションの値を取得
+            const keyword = searchForm.querySelector('input[name="keyword"]').value || '';
+            const page = getUrlParameter('page') || '1';
+            
+            // フォームのaction URLを更新
+            const baseUrl = searchForm.getAttribute('action');
+            const newUrl = `${baseUrl}?status=${statusFilter.value}&period=${periodFilter.value}&keyword=${keyword}&page=${page}`;
+            searchForm.setAttribute('action', newUrl);
+            
+            // フォームを送信
+            searchForm.submit();
+        });
+    }
+}
+
+function showPage(pageId) {
+    const pages = document.querySelectorAll('.page');
+    pages.forEach(page => page.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+}
+
+function updateActiveLink(activeLink) {
+    const navLinks = document.querySelectorAll('.nav-links a');
+    navLinks.forEach(link => link.classList.remove('active'));
+    activeLink.classList.add('active');
+}
+
+// イベントリスナーの設定
+function setupEventListeners() {
+    // 書籍追加ボタン
+    document.getElementById('addBookBtn')?.addEventListener('click', () => {
+        showModal('書籍登録', createBookForm());
     });
 
-    // 新規登録ボタンのクリックイベント
-    $("#newBookBtn").click(function() {
-        clearForm();
-        $("#modalTitle").text("新規登録");
-        bookModal.show();
-        centerModal($("#bookModal .modal-content"));
+    // ユーザー追加ボタン
+    document.getElementById('addUserBtn')?.addEventListener('click', () => {
+        showModal('ユーザー登録', createUserForm());
+    });
+
+    // 貸出登録ボタン
+    document.getElementById('newBorrowingBtn')?.addEventListener('click', () => {
+        showModal('貸出登録', createBorrowingForm());
+    });
+
+    // 検索機能
+    document.querySelectorAll('.search input').forEach(input => {
+        input.addEventListener('input', debounce((e) => {
+            const searchTerm = e.target.value;
+            const section = e.target.closest('section').id;
+            handleSearch(section, searchTerm);
+        }, 300));
     });
 
     // モーダルを閉じる
-    closeButtons.click(function() {
-        $(this).closest('.modal').hide();
-    });
+    document.querySelector('.modal .close')?.addEventListener('click', closeModal);
+}
 
-    // モーダル外クリックで閉じる
-    $(window).click(function(event) {
-        if ($(event.target).hasClass('modal')) {
-            $('.modal').hide();
+// モーダル管理
+function showModal(title, content) {
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+
+    modalTitle.textContent = title;
+    modalBody.innerHTML = content;
+    modal.style.display = 'block';
+
+    // フォームイベントリスナーの設定
+    const form = modalBody.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', handleFormSubmit);
+    }
+}
+
+function closeModal() {
+    const modal = document.getElementById('modal');
+    modal.style.display = 'none';
+}
+
+// フォーム生成
+function createBookForm(book = null) {
+    return `
+        <form id="bookForm">
+            <div class="form-group">
+                <label for="isbn">ISBN</label>
+                <input type="text" id="isbn" name="isbn" required value="${book?.isbn || ''}">
+            </div>
+            <div class="form-group">
+                <label for="title">タイトル</label>
+                <input type="text" id="title" name="title" required value="${book?.title || ''}">
+            </div>
+            <div class="form-group">
+                <label for="author">著者</label>
+                <input type="text" id="author" name="author" required value="${book?.author || ''}">
+            </div>
+            <div class="form-group">
+                <label for="category">カテゴリ</label>
+                <select id="category" name="category" required>
+                    <option value="">選択してください</option>
+                    <option value="文学">文学</option>
+                    <option value="科学">科学</option>
+                    <option value="歴史">歴史</option>
+                    <option value="技術">技術</option>
+                </select>
+            </div>
+            <button type="submit" class="btn primary">保存</button>
+        </form>
+    `;
+}
+
+function createUserForm(user = null) {
+    return `
+        <form id="userForm">
+            <div class="form-group">
+                <label for="username">ユーザー名</label>
+                <input type="text" id="username" name="username" required value="${user?.username || ''}">
+            </div>
+            <div class="form-group">
+                <label for="email">メールアドレス</label>
+                <input type="email" id="email" name="email" required value="${user?.email || ''}">
+            </div>
+            <div class="form-group">
+                <label for="role">権限</label>
+                <select id="role" name="role" required>
+                    <option value="USER">一般ユーザー</option>
+                    <option value="ADMIN">管理者</option>
+                </select>
+            </div>
+            <button type="submit" class="btn primary">保存</button>
+        </form>
+    `;
+}
+
+function createBorrowingForm() {
+    return `
+        <form id="borrowingForm">
+            <div class="form-group">
+                <label for="bookId">書籍</label>
+                <select id="bookId" name="bookId" required>
+                    <option value="">選択してください</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="userId">利用者</label>
+                <select id="userId" name="userId" required>
+                    <option value="">選択してください</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="returnDate">返却予定日</label>
+                <input type="date" id="returnDate" name="returnDate" required>
+            </div>
+            <button type="submit" class="btn primary">登録</button>
+        </form>
+    `;
+}
+
+// データ操作
+async function handleFormSubmit(e) {
+    e.preventDefault();
+    const formId = e.target.id;
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+        let response;
+        switch (formId) {
+            case 'bookForm':
+                response = await saveBook(data);
+                break;
+            case 'userForm':
+                response = await saveUser(data);
+                break;
+            case 'borrowingForm':
+                response = await saveBorrowing(data);
+                break;
         }
-    });
 
-    // 書籍情報保存
-    $("#bookForm").submit(function(e) {
-        e.preventDefault();
-        const bookId = $("#bookId").val();
-        const bookData = {
-            title: $("#title").val(),
-            author: $("#author").val(),
-            category: $("#category").val(),
-            publishDate: $("#publishDate").val(),
-            price: parseInt($("#price").val())
-        };
-
-        try {
-            validateInput(bookData);
-        } catch (error) {
-            showError(error.message);
-            return;
+        if (response.ok) {
+            closeModal();
+            refreshCurrentPage();
         }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('エラーが発生しました');
+    }
+}
 
-        // 新規登録か更新かを判定
-        const url = bookId ? `/api/books/${bookId}` : '/api/books';
-        const method = bookId ? 'PUT' : 'POST';
+// API呼び出し
+async function saveBook(data) {
+    return await fetch('/api/books', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    });
+}
 
-        $.ajax({
-            url: url,
-            method: method,
-            contentType: 'application/json',
-            data: JSON.stringify(bookData),
-            success: function() {
-                location.reload();
-            },
-            error: function(xhr) {
-                showError('エラーが発生しました: ' + xhr.responseText);
+async function saveUser(data) {
+    return await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    });
+}
+
+async function saveBorrowing(data) {
+    return await fetch('/api/borrowings', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    });
+}
+
+// チャート初期化
+function initializeCharts() {
+    // 人気書籍チャート
+    const popularBooksCtx = document.getElementById('popularBooksChart')?.getContext('2d');
+    if (popularBooksCtx) {
+        new Chart(popularBooksCtx, {
+            type: 'bar',
+            data: {
+                labels: ['書籍A', '書籍B', '書籍C', '書籍D', '書籍E'],
+                datasets: [{
+                    label: '貸出回数',
+                    data: [12, 19, 3, 5, 2],
+                    backgroundColor: 'rgba(33, 150, 243, 0.5)'
+                }]
             }
         });
-    });
+    }
 
-    // 編集ボタンのクリックイベント
-    $(document).on('click', '.btn-edit', function() {
-        const bookId = $(this).data('id');
-        console.log('Edit button clicked, bookId:', bookId); // デバッグログ
-        
-        $.ajax({
-            url: `/api/books/${bookId}`,
-            method: 'GET',
-            success: function(book) {
-                console.log('Book data received:', book); // デバッグログ
-                $("#bookId").val(book.bookId);
-                $("#title").val(book.title);
-                $("#author").val(book.author);
-                $("#category").val(book.category);
-                $("#publishDate").val(formatDate(book.publishDate));
-                $("#price").val(book.price);
-                $("#modalTitle").text("書籍編集");
-                bookModal.show();
-                centerModal($("#bookModal .modal-content"));
-            },
-            error: function(xhr) {
-                showError('書籍情報の取得に失敗しました: ' + xhr.responseText);
+    // 月間貸出推移チャート
+    const monthlyBorrowingsCtx = document.getElementById('monthlyBorrowingsChart')?.getContext('2d');
+    if (monthlyBorrowingsCtx) {
+        new Chart(monthlyBorrowingsCtx, {
+            type: 'line',
+            data: {
+                labels: ['1月', '2月', '3月', '4月', '5月'],
+                datasets: [{
+                    label: '貸出数',
+                    data: [65, 59, 80, 81, 56],
+                    borderColor: 'rgb(75, 192, 192)'
+                }]
             }
         });
-    });
+    }
+}
 
-    // 削除ボタンのクリックイベント
-    $(document).on('click', '.btn-delete', function() {
-        if (!confirm('本当に削除しますか？')) return;
-        
-        const bookId = $(this).data('id');
-        $.ajax({
-            url: `/api/books/${bookId}`,
-            method: 'DELETE',
-            success: function() {
-                location.reload();
-            },
-            error: function(xhr) {
-                showError('削除に失敗しました: ' + xhr.responseText);
-            }
-        });
-    });
-
-    // 貸出ボタンのクリックイベント
-    $(document).on('click', '.btn-borrow', function() {
-        $("#borrowBookId").val($(this).data('id'));
-        borrowModal.show();
-        centerModal($("#borrowModal .modal-content"));
-    });
-
-    // 貸出処理
-    $("#borrowForm").submit(function(e) {
-        e.preventDefault();
-        const bookId = $("#borrowBookId").val();
-        const borrowData = {
-            borrower: $("#borrower").val(),
-            expectedReturnDate: $("#expectedReturnDate").val()
+// ユーティリティ関数
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
         };
-
-        $.ajax({
-            url: `/api/books/${bookId}/borrow`,
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(borrowData),
-            success: function() {
-                location.reload();
-            },
-            error: function(xhr) {
-                showError('貸出に失敗しました: ' + xhr.responseText);
-            }
-        });
-    });
-
-    // 返却ボタンのクリックイベント
-    $(document).on('click', '.btn-return', function() {
-        if (!confirm('返却処理を行いますか？')) return;
-
-        const bookId = $(this).data('id');
-        $.ajax({
-            url: `/api/books/${bookId}/return`,
-            method: 'POST',
-            success: function() {
-                location.reload();
-            },
-            error: function(xhr) {
-                showError('返却に失敗しました: ' + xhr.responseText);
-            }
-        });
-    });
-});
-
-// モーダルを中央に配置
-function centerModal($modal) {
-    const windowHeight = $(window).height();
-    const modalHeight = $modal.height();
-    const top = Math.max(windowHeight - modalHeight, 0) / 2;
-    $modal.css({
-        top: top + 'px'
-    });
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }
 
-// モーダルをドラッグ可能にする
-function makeDraggable($element) {
-    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-    
-    $element.find('h2').css('cursor', 'move').on('mousedown', dragMouseDown);
-
-    function dragMouseDown(e) {
-        e.preventDefault();
-        pos3 = e.clientX;
-        pos4 = e.clientY;
-        $(document).on('mousemove', elementDrag);
-        $(document).on('mouseup', closeDragElement);
-    }
-
-    function elementDrag(e) {
-        e.preventDefault();
-        pos1 = pos3 - e.clientX;
-        pos2 = pos4 - e.clientY;
-        pos3 = e.clientX;
-        pos4 = e.clientY;
-        
-        const newTop = $element.offset().top - pos2;
-        const newLeft = $element.offset().left - pos1;
-        
-        $element.css({
-            top: newTop + 'px',
-            left: newLeft + 'px',
-            transform: 'none',
-            margin: '0'
-        });
-    }
-
-    function closeDragElement() {
-        $(document).off('mousemove', elementDrag);
-        $(document).off('mouseup', closeDragElement);
+function refreshCurrentPage() {
+    const activePage = document.querySelector('.page.active');
+    if (activePage) {
+        loadPageData(activePage.id);
     }
 }
 
-// フォームをクリア
-function clearForm() {
-    $("#bookId").val('');
-    $("#title").val('');
-    $("#author").val('');
-    $("#category").val('');
-    $("#publishDate").val('');
-    $("#price").val('');
+function loadPageData(pageId) {
+    switch (pageId) {
+        case 'dashboard':
+            loadDashboardData();
+            break;
+        case 'books':
+            loadBooks();
+            break;
+        case 'users':
+            loadUsers();
+            break;
+        case 'borrowing':
+            loadBorrowings();
+            break;
+        case 'statistics':
+            loadStatistics();
+            break;
+    }
 }
 
-// 日付のフォーマット
-function formatDate(date) {
-    if (!date) return '';
-    const d = new Date(date);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+// データ読み込み関数
+async function loadDashboardData() {
+    try {
+        const response = await fetch('/api/dashboard');
+        const data = await response.json();
+        updateDashboardUI(data);
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+    }
 }
 
-// 価格のフォーマット
-function formatPrice(price) {
-    return new Intl.NumberFormat('ja-JP').format(price);
+function updateDashboardUI(data) {
+    // ダッシュボードの更新処理
 }
 
-// エラーメッセージの表示
-function showError(message) {
-    const errorDiv = $("<div>")
-        .addClass("error-message")
-        .text(message)
-        .appendTo("body");
-    
-    setTimeout(() => {
-        errorDiv.fadeOut(500, function() {
-            $(this).remove();
-        });
-    }, 3000);
+// 検索処理
+function handleSearch(section, searchTerm) {
+    switch (section) {
+        case 'books':
+            searchBooks(searchTerm);
+            break;
+        case 'users':
+            searchUsers(searchTerm);
+            break;
+        case 'borrowing':
+            searchBorrowings(searchTerm);
+            break;
+    }
 }
 
-// 入力値のバリデーション
-function validateInput(data) {
-    if (!data.title || data.title.trim() === '') {
-        throw new Error('タイトルを入力してください');
+async function searchBooks(term) {
+    try {
+        const response = await fetch(`/api/books/search?term=${encodeURIComponent(term)}`);
+        const books = await response.json();
+        updateBooksList(books);
+    } catch (error) {
+        console.error('Error searching books:', error);
     }
-    if (!data.author || data.author.trim() === '') {
-        throw new Error('著者を入力してください');
+}
+
+function updateBooksList(books) {
+    const tbody = document.getElementById('booksList');
+    if (!tbody) return;
+
+    tbody.innerHTML = books.map(book => `
+        <tr>
+            <td>${book.id}</td>
+            <td>${book.title}</td>
+            <td>${book.author}</td>
+            <td>${book.category}</td>
+            <td>
+                <span class="badge ${getStatusBadgeClass(book.status)}">
+                    ${getStatusText(book.status)}
+                </span>
+            </td>
+            <td>
+                <button class="btn" onclick="editBook(${book.id})">
+                    <span class="material-icons">edit</span>
+                </button>
+                <button class="btn" onclick="deleteBook(${book.id})">
+                    <span class="material-icons">delete</span>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getStatusBadgeClass(status) {
+    switch (status) {
+        case 0: return 'success';
+        case 1: return 'warning';
+        case 2: return 'danger';
+        default: return '';
     }
-    if (!data.category || data.category.trim() === '') {
-        throw new Error('カテゴリを入力してください');
-    }
-    if (!data.publishDate) {
-        throw new Error('出版日を入力してください');
-    }
-    if (!data.price || data.price < 0) {
-        throw new Error('正しい価格を入力してください');
+}
+
+function getStatusText(status) {
+    switch (status) {
+        case 0: return '利用可能';
+        case 1: return '貸出中';
+        case 2: return '予約済み';
+        default: return '不明';
     }
 }

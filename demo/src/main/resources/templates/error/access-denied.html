@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アクセス拒否 - 図書管理システム</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .error-container {
+            max-width: 600px;
+            margin: 100px auto;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            color: #F44336;
+            margin-bottom: 1rem;
+        }
+
+        .error-title {
+            color: #D32F2F;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .error-message {
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        .back-button {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+
+        .back-button:hover {
+            background-color: #1976D2;
+        }
+
+        .additional-links {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+
+        .additional-links a {
+            color: var(--primary-color);
+            text-decoration: none;
+            margin: 0 1rem;
+        }
+
+        .additional-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">
+            ⚠️
+        </div>
+        <h1 class="error-title">アクセス拒否</h1>
+        <p class="error-message">
+            申し訳ありませんが、このページにアクセスする権限がありません。<br>
+            必要な権限がない、またはログインが必要な可能性があります。
+        </p>
+        <a href="/" class="back-button">ホームに戻る</a>
+
+        <div class="additional-links">
+            <a href="/login">ログイン</a>
+            <a href="/contact">お問い合わせ</a>
+            <a href="/help">ヘルプ</a>
+        </div>
+    </div>
+
+    <script>
+        // ブラウザの戻るボタン用の履歴エントリを追加
+        history.pushState(null, '', window.location.href);
+        window.addEventListener('popstate', function() {
+            history.pushState(null, '', window.location.href);
+        });
+    </script>
+</body>
+</html>

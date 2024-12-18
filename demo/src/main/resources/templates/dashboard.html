@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="fragments/layout :: head">
+</head>
+<body>
+    <!-- サイドバー -->
+    <nav th:replace="fragments/layout :: sidebar"></nav>
+
+    <main>
+        <!-- ウェルカムセクション -->
+        <div class="welcome-section">
+            <h1>ようこそ、<span th:text="${currentUser?.displayName ?: 'ゲスト'}">ユーザー</span>さん</h1>
+            <p>今日も図書管理システムをご利用いただき、ありがとうございます。</p>
+        </div>
+
+        <!-- アラートセクション（管理者のみ） -->
+        <div class="alert-section" sec:authorize="hasRole('ROLE_ADMIN')">
+            <div class="alert alert-danger" th:if="${outOfStockAlert}">
+                <i class="fas fa-exclamation-circle"></i>
+                <div>
+                    <strong>在庫切れ警告</strong>
+                    <p>在庫数が0の書籍があります。確認してください。</p>
+                    <ul class="alert-details">
+                        <li th:each="book : ${outOfStockBooks}">
+                            <span th:text="${book.title}">書籍タイトル</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="alert alert-danger" th:if="${overdueAlert}">
+                <i class="fas fa-exclamation-circle"></i>
+                <div>
+                    <strong>延滞警告</strong>
+                    <p>返却期限を過ぎている貸出があります。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 統計情報 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>
+                    <i class="fas fa-book-open"></i>
+                    総蔵書数
+                </h3>
+                <div class="stat-number" th:text="${totalBooks ?: 0}">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>
+                    <i class="fas fa-book"></i>
+                    貸出可能
+                </h3>
+                <div class="stat-number" th:text="${availableBooks ?: 0}">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>
+                    <i class="fas fa-users"></i>
+                    貸出中
+                </h3>
+                <div class="stat-number" th:text="${borrowedBooks ?: 0}">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>
+                    <i class="fas fa-exclamation-triangle"></i>
+                    延滞
+                </h3>
+                <div class="stat-number" th:text="${overdueBooks ?: 0}">0</div>
+            </div>
+        </div>
+
+        <!-- 人気の書籍 -->
+        <div class="book-list">
+            <h3>人気の書籍</h3>
+            <div th:if="${popularBooks != null and !popularBooks.empty}">
+                <a th:href="@{/books/{id}(id=${book.bookId})}" class="book-item" th:each="book : ${popularBooks}">
+                    <div class="book-info">
+                        <div class="book-title" th:text="${book.title}">書籍タイトル</div>
+                        <div class="book-author" th:text="${book.author}">著者名</div>
+                    </div>
+                    <span class="book-status" 
+                          th:class="${book.status == 0 ? 'status-available' : 'status-borrowed'}"
+                          th:text="${book.status == 0 ? '貸出可' : '貸出中'}">
+                        状態
+                    </span>
+                </a>
+            </div>
+            <div th:if="${popularBooks == null or popularBooks.empty}" class="no-books">
+                <p>現在、人気の書籍はありません。</p>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

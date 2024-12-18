@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="fragments/layout :: head">
+    <title>お気に入り書籍</title>
+</head>
+<body>
+    <!-- サイドバー -->
+    <nav th:replace="fragments/layout :: sidebar"></nav>
+
+    <main>
+        <div class="container-fluid">
+            <h2 class="mb-4">お気に入り書籍一覧</h2>
+            
+            <div class="row">
+                <div th:each="book : ${books}" class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title" th:text="${book.title}">書籍タイトル</h5>
+                            <div class="book-info-container">
+                                <p class="card-text">
+                                    <span class="text-muted">著者：</span>
+                                    <span th:text="${book.author}">著者名</span>
+                                </p>
+                                <p class="card-text">
+                                    <span class="text-muted">カテゴリ：</span>
+                                    <span th:text="${book.category}">カテゴリ</span>
+                                </p>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <a th:href="@{/books/{id}(id=${book.bookId})}" 
+                                   class="btn btn-primary">詳細</a>
+                                <button class="btn btn-danger remove-favorite"
+                                        th:data-book-id="${book.bookId}">
+                                    お気に入りから削除
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${books.empty}" class="alert alert-info">
+                お気に入りに登録された書籍はありません。
+            </div>
+        </div>
+    </main>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <script th:inline="javascript">
+        document.querySelectorAll('.remove-favorite').forEach(button => {
+            button.addEventListener('click', async function() {
+                const bookId = this.getAttribute('data-book-id');
+                const token = document.querySelector('meta[name="_csrf"]').content;
+                const header = document.querySelector('meta[name="_csrf_header"]').content;
+                
+                try {
+                    const response = await fetch(`/books/favorites/remove/${bookId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            [header]: token
+                        }
+                    });
+                    if (response.ok) {
+                        // 削除成功時は該当の書籍カードを削除
+                        this.closest('.col-md-4').remove();
+                        // カードがすべてなくなった場合はメッセージを表示
+                        if (document.querySelectorAll('.card').length === 0) {
+                            const message = document.createElement('div');
+                            message.className = 'alert alert-info';
+                            message.textContent = 'お気に入りに登録された書籍はありません。';
+                            document.querySelector('.row').after(message);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('エラーが発生しました。');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

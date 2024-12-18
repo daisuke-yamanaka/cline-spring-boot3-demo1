@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head">
+</head>
+<body>
+    <!-- サイドバー -->
+    <nav th:replace="fragments/layout :: sidebar"></nav>
+
+    <main>
+        <div class="search-container">
+            <div class="search-header">
+                <h1>書籍詳細</h1>
+                <div class="navigation">
+                    <a href="/books/search" class="action-button secondary-action">
+                        <i class="fas fa-arrow-left"></i>
+                        検索結果に戻る
+                    </a>
+                </div>
+            </div>
+
+            <!-- アラートメッセージ -->
+            <div th:if="${success}" class="alert alert-success">
+                <i class="fas fa-check-circle"></i>
+                <span th:text="${success}">処理が成功しました</span>
+            </div>
+            <div th:if="${error}" class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <span th:text="${error}">エラーが発生しました</span>
+            </div>
+
+            <div class="book-item">
+                <div class="book-cover">
+                    <i class="fas fa-book fa-4x"></i>
+                </div>
+                <div class="book-details">
+                    <h2 class="book-title" th:text="${book.title}">書籍タイトル</h2>
+                    <div class="book-info-container">
+                        <div class="book-info-line">著者: <span th:text="${book.author}">著者名</span></div>
+                        <div class="book-info-line">ISBN: <span th:text="${book.isbn}">ISBN</span></div>
+                        <div class="book-info-line">カテゴリ: <span th:text="${book.category}">カテゴリ</span></div>
+                    </div>
+                    
+                    <span class="book-status" 
+                        th:class="${book.status == 0 ? 'book-status status-available' : 'book-status status-borrowed'}"
+                        th:text="${book.status == 0 ? '貸出可' : '貸出中'}">
+                        状態
+                    </span>
+
+                    <div class="book-actions">
+                        <form th:if="${book.status == 0}" 
+                            th:action="@{/books/{id}/borrow(id=${book.bookId})}" 
+                            method="post">
+                            <button type="submit" class="action-button primary-action">
+                                <i class="fas fa-book"></i>
+                                借りる
+                            </button>
+                        </form>
+                        <form th:if="${book.status == 1}" 
+                            th:action="@{/books/{id}/return(id=${book.bookId})}" 
+                            method="post">
+                            <button type="submit" class="action-button primary-action">
+                                <i class="fas fa-undo"></i>
+                                返却
+                            </button>
+                        </form>
+                        <button id="favoriteButton" class="action-button" th:data-book-id="${book.bookId}">
+                            <i class="fas fa-heart"></i>
+                            <span>お気に入り</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="book-section" th:if="${book.status == 1}">
+                <h3 class="section-title">
+                    <i class="fas fa-clock"></i>
+                    貸出情報
+                </h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">借り手:</span>
+                        <span class="info-value" th:text="${book.borrower}">借り手名</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">貸出日:</span>
+                        <span class="info-value" th:text="${#temporals.format(book.borrowedDate, 'yyyy/MM/dd')}">貸出日</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">返却予定日:</span>
+                        <span class="info-value" th:text="${#temporals.format(book.expectedReturnDate, 'yyyy/MM/dd')}">返却予定日</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="book-section">
+                <h3 class="section-title">
+                    <i class="fas fa-info-circle"></i>
+                    書籍情報
+                </h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">出版日:</span>
+                        <span class="info-value" th:text="${#temporals.format(book.publishDate, 'yyyy/MM/dd')}">出版日</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">価格:</span>
+                        <span class="info-value" th:text="${#numbers.formatInteger(book.price, 0, 'COMMA') + '円'}">価格</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">在庫数:</span>
+                        <span class="info-value" th:text="${book.stockQuantity}">在庫数</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">貸出回数:</span>
+                        <span class="info-value" th:text="${book.borrowCount}">貸出回数</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // CSRFトークンの取得
+        const csrfToken = document.querySelector("meta[name='_csrf']").getAttribute("content");
+        const csrfHeader = document.querySelector("meta[name='_csrf_header']").getAttribute("content");
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            const favoriteButton = document.getElementById('favoriteButton');
+            const bookId = favoriteButton.getAttribute('data-book-id');
+            
+            // 初期状態の確認
+            try {
+                const response = await fetch(`/books/favorites/check/${bookId}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const isFavorite = await response.json();
+                updateFavoriteButton(isFavorite);
+            } catch (error) {
+                console.error('Error:', error);
+                showError('お気に入り状態の確認に失敗しました。');
+            }
+
+            favoriteButton.addEventListener('click', async function() {
+                const isFavorite = favoriteButton.classList.contains('favorite-active');
+                const method = isFavorite ? 'DELETE' : 'POST';
+                const url = isFavorite ? 
+                    `/books/favorites/remove/${bookId}` : 
+                    `/books/favorites/add/${bookId}`;
+
+                try {
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: {
+                            [csrfHeader]: csrfToken
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    updateFavoriteButton(!isFavorite);
+                    showSuccess(isFavorite ? 'お気に入りから削除しました' : 'お気に入りに追加しました');
+                } catch (error) {
+                    console.error('Error:', error);
+                    showError('お気に入りの更新に失敗しました。');
+                }
+            });
+        });
+
+        function updateFavoriteButton(isFavorite) {
+            const favoriteButton = document.getElementById('favoriteButton');
+            const icon = favoriteButton.querySelector('i');
+            const text = favoriteButton.querySelector('span');
+
+            if (isFavorite) {
+                favoriteButton.classList.add('favorite-active');
+                icon.classList.add('fas', 'fa-heart');
+                icon.classList.remove('far', 'fa-heart');
+                text.textContent = 'お気に入り解除';
+            } else {
+                favoriteButton.classList.remove('favorite-active');
+                icon.classList.add('far', 'fa-heart');
+                icon.classList.remove('fas', 'fa-heart');
+                text.textContent = 'お気に入り登録';
+            }
+        }
+
+        function showSuccess(message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success';
+            alertDiv.innerHTML = `
+                <i class="fas fa-check-circle"></i>
+                <span>${message}</span>
+            `;
+            insertAlert(alertDiv);
+        }
+
+        function showError(message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-error';
+            alertDiv.innerHTML = `
+                <i class="fas fa-exclamation-circle"></i>
+                <span>${message}</span>
+            `;
+            insertAlert(alertDiv);
+        }
+
+        function insertAlert(alertDiv) {
+            const container = document.querySelector('.search-container');
+            const header = document.querySelector('.search-header');
+            // 既存のアラートを削除
+            const existingAlerts = document.querySelectorAll('.alert');
+            existingAlerts.forEach(alert => alert.remove());
+            // 新しいアラートを挿入
+            container.insertBefore(alertDiv, header.nextSibling);
+            // 3秒後にアラートを消す
+            setTimeout(() => alertDiv.remove(), 3000);
+        }
+    </script>
+
+    <style>
+        .book-info-container {
+            display: flex;
+            gap: 20px;
+            margin: 10px 0;
+        }
+        .book-info-line {
+            color: #666;
+            font-size: 0.9em;
+            white-space: nowrap;
+        }
+        .favorite-active {
+            background-color: #ff4081;
+            color: white;
+        }
+        .favorite-active:hover {
+            background-color: #e91e63;
+        }
+        #favoriteButton {
+            margin-left: 10px;
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        #favoriteButton:not(.favorite-active) {
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        #favoriteButton:not(.favorite-active):hover {
+            background-color: #e0e0e0;
+        }
+        #favoriteButton i {
+            margin-right: 5px;
+        }
+        .alert {
+            padding: 12px 20px;
+            margin: 10px 0;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .alert i {
+            font-size: 1.2em;
+        }
+    </style>
+</body>
+</html>

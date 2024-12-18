@@ -3,115 +3,194 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>書籍管理システム</title>
+    <title>図書管理システム</title>
     <link rel="stylesheet" href="/css/style.css">
-    <!-- jQueryの読み込み -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- CSRFトークンの取得用メタタグ -->
-    <meta name="_csrf" th:content="${_csrf.token}"/>
-    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
     <header>
-        <h1>書籍管理システム</h1>
+        <nav>
+            <div class="logo">図書管理システム</div>
+            <div class="nav-links">
+                <a href="#" class="active" data-page="dashboard">ダッシュボード</a>
+                <a href="#" data-page="books">書籍管理</a>
+                <a href="#" data-page="users">ユーザー管理</a>
+                <a href="#" data-page="borrowing">貸出管理</a>
+                <a href="#" data-page="statistics">統計</a>
+            </div>
+            <div class="user-menu">
+                <span class="material-icons">notifications</span>
+                <span class="material-icons">account_circle</span>
+            </div>
+        </nav>
     </header>
 
     <main>
-        <!-- 新規登録ボタン -->
-        <div class="action-buttons">
-            <button id="newBookBtn" class="btn-primary">新規登録</button>
-        </div>
-
-        <!-- 書籍一覧テーブル -->
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>タイトル</th>
-                        <th>著者</th>
-                        <th>カテゴリ</th>
-                        <th>出版日</th>
-                        <th>価格</th>
-                        <th>状態</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody id="bookList">
-                    <tr th:each="book : ${books}">
-                        <td th:text="${book.title}"></td>
-                        <td th:text="${book.author}"></td>
-                        <td th:text="${book.category}"></td>
-                        <td th:text="${#temporals.format(book.publishDate, 'yyyy-MM-dd')}"></td>
-                        <td th:text="${#numbers.formatDecimal(book.price, 0, 'COMMA', 0, 'POINT')}"></td>
-                        <td th:text="${book.status == 0 ? '貸出可能' : '貸出中'}"></td>
-                        <td class="action-cell">
-                            <button class="btn-edit" th:attr="data-id=${book.bookId}">編集</button>
-                            <button class="btn-delete" th:attr="data-id=${book.bookId}">削除</button>
-                            <button th:if="${book.status == 0}" class="btn-borrow" th:attr="data-id=${book.bookId}">貸出</button>
-                            <button th:if="${book.status == 1}" class="btn-return" th:attr="data-id=${book.bookId}">返却</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- モーダルダイアログ（新規登録・編集用） -->
-        <div id="bookModal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2 id="modalTitle">書籍情報</h2>
-                <form id="bookForm">
-                    <input type="hidden" id="bookId">
-                    <div class="form-group">
-                        <label for="title">タイトル:</label>
-                        <input type="text" id="title" required>
+        <!-- ダッシュボード -->
+        <section id="dashboard" class="page active">
+            <h2>ダッシュボード</h2>
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <h3>貸出状況</h3>
+                    <div class="stat">
+                        <span class="number">25</span>
+                        <span class="label">現在の貸出数</span>
                     </div>
-                    <div class="form-group">
-                        <label for="author">著者:</label>
-                        <input type="text" id="author" required>
+                </div>
+                <div class="dashboard-card">
+                    <h3>返却予定</h3>
+                    <div class="stat">
+                        <span class="number">8</span>
+                        <span class="label">本日の返却予定</span>
                     </div>
-                    <div class="form-group">
-                        <label for="category">カテゴリ:</label>
-                        <input type="text" id="category" required>
+                </div>
+                <div class="dashboard-card">
+                    <h3>予約状況</h3>
+                    <div class="stat">
+                        <span class="number">12</span>
+                        <span class="label">現在の予約数</span>
                     </div>
-                    <div class="form-group">
-                        <label for="publishDate">出版日:</label>
-                        <input type="date" id="publishDate" required>
+                </div>
+                <div class="dashboard-card">
+                    <h3>新着図書</h3>
+                    <div class="stat">
+                        <span class="number">15</span>
+                        <span class="label">今月の新着数</span>
                     </div>
-                    <div class="form-group">
-                        <label for="price">価格:</label>
-                        <input type="number" id="price" required min="0">
-                    </div>
-                    <button type="submit" class="btn-primary">保存</button>
-                </form>
+                </div>
             </div>
-        </div>
+        </section>
 
-        <!-- 貸出モーダル -->
-        <div id="borrowModal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2>書籍貸出</h2>
-                <form id="borrowForm">
-                    <input type="hidden" id="borrowBookId">
-                    <div class="form-group">
-                        <label for="borrower">借り手:</label>
-                        <input type="text" id="borrower" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="expectedReturnDate">返却予定日:</label>
-                        <input type="date" id="expectedReturnDate" required>
-                    </div>
-                    <button type="submit" class="btn-primary">貸出</button>
-                </form>
+        <!-- 書籍管理 -->
+        <section id="books" class="page">
+            <h2>書籍管理</h2>
+            <div class="actions">
+                <button class="btn primary" id="addBookBtn">
+                    <span class="material-icons">add</span>新規登録
+                </button>
+                <div class="search">
+                    <input type="text" placeholder="書籍を検索...">
+                    <span class="material-icons">search</span>
+                </div>
             </div>
-        </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>タイトル</th>
+                            <th>著者</th>
+                            <th>カテゴリ</th>
+                            <th>状態</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="booksList">
+                        <!-- 書籍リストがJavaScriptで動的に追加されます -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ユーザー管理 -->
+        <section id="users" class="page">
+            <h2>ユーザー管理</h2>
+            <div class="actions">
+                <button class="btn primary" id="addUserBtn">
+                    <span class="material-icons">person_add</span>新規登録
+                </button>
+                <div class="search">
+                    <input type="text" placeholder="ユーザーを検索...">
+                    <span class="material-icons">search</span>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>ユーザー名</th>
+                            <th>メール</th>
+                            <th>権限</th>
+                            <th>状態</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersList">
+                        <!-- ユーザーリストがJavaScriptで動的に追加されます -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 貸出管理 -->
+        <section id="borrowing" class="page">
+            <h2>貸出管理</h2>
+            <div class="actions">
+                <button class="btn primary" id="newBorrowingBtn">
+                    <span class="material-icons">library_add</span>新規貸出
+                </button>
+                <div class="search">
+                    <input type="text" placeholder="貸出を検索...">
+                    <span class="material-icons">search</span>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>書籍</th>
+                            <th>借り手</th>
+                            <th>貸出日</th>
+                            <th>返却予定日</th>
+                            <th>状態</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="borrowingList">
+                        <!-- 貸出リストがJavaScriptで動的に追加されます -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 統計 -->
+        <section id="statistics" class="page">
+            <h2>統計</h2>
+            <div class="stats-grid">
+                <div class="stats-card">
+                    <h3>人気の書籍</h3>
+                    <canvas id="popularBooksChart"></canvas>
+                </div>
+                <div class="stats-card">
+                    <h3>月間貸出推移</h3>
+                    <canvas id="monthlyBorrowingsChart"></canvas>
+                </div>
+                <div class="stats-card">
+                    <h3>カテゴリ別分布</h3>
+                    <canvas id="categoryDistributionChart"></canvas>
+                </div>
+                <div class="stats-card">
+                    <h3>利用者統計</h3>
+                    <canvas id="userStatsChart"></canvas>
+                </div>
+            </div>
+        </section>
     </main>
 
-    <footer>
-        <p>&copy; 2024 書籍管理システム</p>
-    </footer>
+    <!-- モーダル -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle">タイトル</h2>
+            <div id="modalBody">
+                <!-- モーダルの内容がJavaScriptで動的に追加されます -->
+            </div>
+        </div>
+    </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/js/script.js"></script>
 </body>
 </html>

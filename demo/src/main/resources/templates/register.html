@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新規登録 - 図書管理システム</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .register-container {
+            max-width: 500px;
+            margin: 100px auto;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .register-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .register-header h1 {
+            color: var(--primary-color);
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .register-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #666;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .form-group .hint {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+
+        .register-button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.8rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .register-button:hover {
+            background-color: #1976D2;
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .login-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+
+        .error-message {
+            background-color: #FFEBEE;
+            color: #D32F2F;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+
+        .validation-error {
+            color: #D32F2F;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-header">
+            <h1>図書管理システム</h1>
+            <p>新規アカウント登録</p>
+        </div>
+
+        <!-- エラーメッセージ -->
+        <div th:if="${error}" class="error-message" th:text="${error}">
+            エラーメッセージ
+        </div>
+
+        <form class="register-form" th:action="@{/register}" method="post" th:object="${user}">
+            <div class="form-group">
+                <label for="username">ユーザー名</label>
+                <input type="text" id="username" name="username" th:field="*{username}" required>
+                <div class="hint">半角英数字で4文字以上20文字以内</div>
+                <div th:if="${#fields.hasErrors('username')}" class="validation-error" 
+                     th:errors="*{username}">ユーザー名エラー</div>
+            </div>
+
+            <div class="form-group">
+                <label for="displayName">表示名</label>
+                <input type="text" id="displayName" name="displayName" th:field="*{displayName}" required>
+                <div class="hint">50文字以内で入力してください</div>
+                <div th:if="${#fields.hasErrors('displayName')}" class="validation-error" 
+                     th:errors="*{displayName}">表示名エラー</div>
+            </div>
+
+            <div class="form-group">
+                <label for="email">メールアドレス</label>
+                <input type="email" id="email" name="email" th:field="*{email}" required>
+                <div th:if="${#fields.hasErrors('email')}" class="validation-error" 
+                     th:errors="*{email}">メールアドレスエラー</div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">パスワード</label>
+                <input type="password" id="password" name="password" th:field="*{password}" required>
+                <div class="hint">8文字以上の半角英数字</div>
+                <div th:if="${#fields.hasErrors('password')}" class="validation-error" 
+                     th:errors="*{password}">パスワードエラー</div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword">パスワード（確認）</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required>
+                <div th:if="${passwordMismatch}" class="validation-error">
+                    パスワードが一致しません
+                </div>
+            </div>
+
+            <button type="submit" class="register-button">登録</button>
+        </form>
+
+        <div class="login-link">
+            <p>すでにアカウントをお持ちの方は <a th:href="@{/login}">ログイン</a></p>
+        </div>
+    </div>
+
+    <script>
+        document.querySelector('.register-form').addEventListener('submit', function(e) {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (password !== confirmPassword) {
+                e.preventDefault();
+                document.getElementById('confirmPassword').setCustomValidity('パスワードが一致しません');
+            } else {
+                document.getElementById('confirmPassword').setCustomValidity('');
+            }
+        });
+
+        document.getElementById('confirmPassword').addEventListener('input', function() {
+            const password = document.getElementById('password').value;
+            if (this.value !== password) {
+                this.setCustomValidity('パスワードが一致しません');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    </script>
+</body>
+</html>

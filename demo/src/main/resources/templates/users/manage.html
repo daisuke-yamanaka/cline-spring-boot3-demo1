@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="fragments/layout :: head">
+</head>
+<body>
+    <!-- サイドバー -->
+    <nav th:replace="fragments/layout :: sidebar"></nav>
+
+    <main>
+        <!-- ウェルカムセクション -->
+        <div class="welcome-section">
+            <h1>ユーザー管理</h1>
+            <p>システムに登録されているユーザーの管理や新規登録を行うことができます。</p>
+        </div>
+
+        <!-- 統計情報 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>
+                    <i class="fas fa-users"></i>
+                    総ユーザー数
+                </h3>
+                <div class="stat-number" th:text="${totalUsers ?: 0}">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>
+                    <i class="fas fa-user-shield"></i>
+                    管理者数
+                </h3>
+                <div class="stat-number" th:text="${adminCount ?: 0}">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>
+                    <i class="fas fa-user-clock"></i>
+                    アクティブユーザー
+                </h3>
+                <div class="stat-number" th:text="${activeUsers ?: 0}">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>
+                    <i class="fas fa-user-lock"></i>
+                    ブロック中
+                </h3>
+                <div class="stat-number" th:text="${blockedUsers ?: 0}">0</div>
+            </div>
+        </div>
+
+        <!-- ユーザー管理セクション -->
+        <div class="book-section">
+            <div class="section-title">
+                <i class="fas fa-users"></i>
+                ユーザー一覧
+            </div>
+            
+            <!-- 新規ユーザー登録ボタン -->
+            <button type="button" class="action-button primary-action mb-3" data-bs-toggle="modal" data-bs-target="#userFormModal">
+                <i class="fas fa-user-plus"></i>
+                新規ユーザー登録
+            </button>
+
+            <!-- ユーザー一覧テーブル -->
+            <div id="userGrid" class="mt-4"></div>
+        </div>
+
+        <!-- ユーザーフォームモーダル -->
+        <div class="modal fade" id="userFormModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">ユーザー情報</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="userForm">
+                            <input type="hidden" id="userId">
+                            <input type="hidden" id="csrfToken" th:value="${_csrf.token}"/>
+                            <input type="hidden" id="csrfHeader" th:value="${_csrf.headerName}"/>
+                            <div class="form-group">
+                                <label for="username">ユーザー名</label>
+                                <input type="text" class="form-control" id="username" required minlength="4" maxlength="20">
+                                <small class="text-muted">半角英数字で4文字以上20文字以内</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="displayName">表示名</label>
+                                <input type="text" class="form-control" id="displayName" required maxlength="50">
+                                <small class="text-muted">50文字以内で入力してください</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="email">メールアドレス</label>
+                                <input type="email" class="form-control" id="email" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="password">パスワード</label>
+                                <input type="password" class="form-control" id="password" minlength="8">
+                                <small class="text-muted">更新時は空白のままにすると既存のパスワードが維持されます</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="role">権限</label>
+                                <select class="form-select" id="role" required>
+                                    <option value="ROLE_USER">一般ユーザー</option>
+                                    <option value="ROLE_ADMIN">管理者</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="maxBorrowCount">最大貸出数</label>
+                                <input type="number" class="form-control" id="maxBorrowCount" required min="0" value="5">
+                            </div>
+                            <div class="form-group">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="isBlocked">
+                                    <label class="form-check-label" for="isBlocked">アカウントブロック</label>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="action-button secondary-action" data-bs-dismiss="modal">キャンセル</button>
+                        <button type="button" class="action-button primary-action" id="saveUser">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Grid.js -->
+    <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
+    <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
+    <script th:inline="javascript">
+        // CSRFトークンの取得
+        const csrfToken = document.getElementById('csrfToken').value;
+        const csrfHeader = document.getElementById('csrfHeader').value;
+
+        // 共通のフェッチオプション
+        function getFetchOptions(method = 'GET') {
+            const options = {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include'
+            };
+
+            if (csrfToken) {
+                options.headers[csrfHeader] = csrfToken;
+            }
+
+            return options;
+        }
+
+        const grid = new gridjs.Grid({
+            columns: [
+                { id: 'userId', name: 'ID' },
+                { id: 'username', name: 'ユーザー名' },
+                { id: 'displayName', name: '表示名' },
+                { id: 'email', name: 'メールアドレス' },
+                { id: 'role', name: '権限' },
+                { id: 'maxBorrowCount', name: '最大貸出数' },
+                { 
+                    id: 'isBlocked',
+                    name: 'ステータス',
+                    formatter: (cell) => cell ? '🔒 ブロック中' : '✅ 有効'
+                },
+                {
+                    id: 'actions',
+                    name: '操作',
+                    formatter: (_, row) => {
+                        return gridjs.html(`
+                            <div class="actions">
+                                <button class="action-button secondary-action" onclick="editUser(${row.cells[0].data})">
+                                    <i class="fas fa-edit"></i> 編集
+                                </button>
+                                <button class="action-button primary-action" onclick="deleteUser(${row.cells[0].data})">
+                                    <i class="fas fa-trash"></i> 削除
+                                </button>
+                            </div>
+                        `);
+                    }
+                }
+            ],
+            server: {
+                url: '/users/api/list',
+                then: data => data.map(user => [
+                    user.userId,
+                    user.username,
+                    user.displayName,
+                    user.email,
+                    user.role === 'ROLE_ADMIN' ? '管理者' : '一般ユーザー',
+                    user.maxBorrowCount,
+                    user.isBlocked,
+                ])
+            },
+            search: true,
+            sort: true,
+            pagination: {
+                limit: 10
+            },
+            language: {
+                search: {
+                    placeholder: '検索...'
+                },
+                pagination: {
+                    previous: '前へ',
+                    next: '次へ',
+                    showing: '表示中',
+                    results: () => '件'
+                }
+            },
+            className: {
+                table: 'table table-hover'
+            }
+        }).render(document.getElementById("userGrid"));
+
+        // エラーハンドリング関数
+        async function handleResponse(response) {
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                const errorMessage = errorData?.message || `${response.status} ${response.statusText}`;
+                throw new Error(errorMessage);
+            }
+            return response;
+        }
+
+        // ユーザー編集
+        function editUser(userId) {
+            fetch(`/users/api/${userId}`, getFetchOptions())
+                .then(handleResponse)
+                .then(response => response.json())
+                .then(user => {
+                    document.getElementById('userId').value = user.userId;
+                    document.getElementById('username').value = user.username;
+                    document.getElementById('displayName').value = user.displayName;
+                    document.getElementById('email').value = user.email;
+                    document.getElementById('role').value = user.role;
+                    document.getElementById('maxBorrowCount').value = user.maxBorrowCount;
+                    document.getElementById('isBlocked').checked = user.isBlocked;
+                    document.getElementById('password').value = '';
+                    
+                    new bootstrap.Modal(document.getElementById('userFormModal')).show();
+                })
+                .catch(error => {
+                    alert(error.message);
+                });
+        }
+
+        // ユーザー削除
+        function deleteUser(userId) {
+            if (confirm('このユーザーを削除してもよろしいですか？')) {
+                fetch(`/users/api/${userId}`, getFetchOptions('DELETE'))
+                .then(handleResponse)
+                .then(() => {
+                    grid.forceRender();
+                })
+                .catch(error => {
+                    alert(error.message);
+                });
+            }
+        }
+
+        // ユーザー保存
+        document.getElementById('saveUser').addEventListener('click', function() {
+            const userId = document.getElementById('userId').value;
+            const userData = {
+                username: document.getElementById('username').value,
+                displayName: document.getElementById('displayName').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                role: document.getElementById('role').value,
+                maxBorrowCount: parseInt(document.getElementById('maxBorrowCount').value),
+                isBlocked: document.getElementById('isBlocked').checked
+            };
+
+            if (userId) {
+                userData.userId = parseInt(userId);
+                if (!userData.password) {
+                    delete userData.password;
+                }
+            }
+
+            const method = userId ? 'PUT' : 'POST';
+            const url = userId ? `/users/api/${userId}` : '/users/api/create';
+
+            const options = getFetchOptions(method);
+            options.body = JSON.stringify(userData);
+
+            fetch(url, options)
+            .then(handleResponse)
+            .then(() => {
+                bootstrap.Modal.getInstance(document.getElementById('userFormModal')).hide();
+                document.getElementById('userForm').reset();
+                grid.forceRender();
+            })
+            .catch(error => {
+                alert(error.message);
+            });
+        });
+
+        // モーダルが閉じられたときにフォームをリセット
+        document.getElementById('userFormModal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('userForm').reset();
+            document.getElementById('userId').value = '';
+        });
+    </script>
+</body>
+</html>

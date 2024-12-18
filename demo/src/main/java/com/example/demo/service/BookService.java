@@ -1,125 +1,342 @@
 package com.example.demo.service;
 
 import com.example.demo.mapper.BookMapper;
+import com.example.demo.mapper.BorrowingHistoryMapper;
 import com.example.demo.model.Book;
+import com.example.demo.model.BorrowingHistory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
 import java.util.List;
 
-/**
- * 書籍管理に関するビジネスロジックを提供するサービスクラス
- */
 @Service
 public class BookService {
 
     @Autowired
     private BookMapper bookMapper;
 
-    /**
-     * 全書籍情報を取得
-     * @return 書籍情報のリスト
-     */
-    public List<Book> getAllBooks() {
+    @Autowired
+    private BorrowingHistoryMapper borrowingHistoryMapper;
+
+    public Book findById(Long bookId) {
+        return bookMapper.findById(bookId);
+    }
+
+    public Book findByIsbn(String isbn) {
+        return bookMapper.findByIsbn(isbn);
+    }
+
+    public List<Book> findAll() {
         return bookMapper.findAll();
     }
 
-    /**
-     * 指定されたIDの書籍情報を取得
-     * @param bookId 書籍ID
-     * @return 書籍情報
-     * @throws IllegalArgumentException 書籍が存在しない場合
-     */
-    public Book getBookById(Long bookId) {
-        Book book = bookMapper.findById(bookId);
+    public List<Book> findByCategory(String category) {
+        return bookMapper.findByCategory(category);
+    }
+
+    public List<Book> findByStatus(Integer status) {
+        return bookMapper.findByStatus(status);
+    }
+
+    public List<Book> findByCategoryAndStatus(String category, Integer status) {
+        return bookMapper.findByCategoryAndStatus(category, status);
+    }
+
+    public List<Book> searchBooksWithFilters(String keyword, String category, Integer status) {
+        // キーワードがnullまたは空文字の場合は、そのままnullを渡す
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            keyword = "%" + keyword.trim() + "%";
+        } else {
+            keyword = null;
+        }
+        
+        // カテゴリが空文字の場合はnullを設定
+        if (category != null && category.trim().isEmpty()) {
+            category = null;
+        }
+        
+        return bookMapper.searchBooksWithFilters(keyword, category, status);
+    }
+
+    public List<Book> searchBooksWithFiltersPaged(String keyword, String category, Integer status, int page, int pageSize) {
+        // キーワードがnullまたは空文字の場合は、そのままnullを渡す
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            keyword = "%" + keyword.trim() + "%";
+        } else {
+            keyword = null;
+        }
+        
+        // カテゴリが空文字の場合はnullを設定
+        if (category != null && category.trim().isEmpty()) {
+            category = null;
+        }
+        
+        int offset = (page - 1) * pageSize;
+        return bookMapper.searchBooksWithFiltersPaged(keyword, category, status, pageSize, offset);
+    }
+
+    public int countBooksWithFilters(String keyword, String category, Integer status) {
+        // キーワードがnullまたは空文字の場合は、そのままnullを渡す
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            keyword = "%" + keyword.trim() + "%";
+        } else {
+            keyword = null;
+        }
+        
+        // カテゴリが空文字の場合はnullを設定
+        if (category != null && category.trim().isEmpty()) {
+            category = null;
+        }
+        
+        return bookMapper.countBooksWithFilters(keyword, category, status);
+    }
+
+    public List<Book> findBorrowedByUser(String username) {
+        return bookMapper.findBorrowedByUser(username);
+    }
+
+    public List<Book> findBorrowedByUserWithFilters(String username, Integer status, LocalDate startDate) {
+        return bookMapper.findBorrowedByUserWithFilters(username, status, startDate);
+    }
+
+    public List<BorrowingHistory> findAllBorrowingHistories() {
+        return borrowingHistoryMapper.findAllWithDetails();
+    }
+
+    public List<BorrowingHistory> findBorrowingHistoriesWithFilters(String keyword, Integer status, LocalDate startDate) {
+        // キーワードがnullまたは空文字の場合は、そのままnullを渡す
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            keyword = "%" + keyword.trim() + "%";
+        } else {
+            keyword = null;
+        }
+        
+        return borrowingHistoryMapper.findAllWithFilters(status, startDate, keyword);
+    }
+
+    public List<BorrowingHistory> findBorrowingHistoriesWithFiltersPaged(String keyword, Integer status, LocalDate startDate, int page, int pageSize) {
+        // キーワードがnullまたは空文字の場合は、そのままnullを渡す
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            keyword = "%" + keyword.trim() + "%";
+        } else {
+            keyword = null;
+        }
+        
+        int offset = (page - 1) * pageSize;
+        return borrowingHistoryMapper.findAllWithFiltersPaged(status, startDate, keyword, pageSize, offset);
+    }
+
+    public int countBorrowingHistoriesWithFilters(String keyword, Integer status, LocalDate startDate) {
+        // キーワードがnullまたは空文字の場合は、そのままnullを渡す
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            keyword = "%" + keyword.trim() + "%";
+        } else {
+            keyword = null;
+        }
+        
+        return borrowingHistoryMapper.countAllWithFilters(status, startDate, keyword);
+    }
+
+    @Transactional
+    public int save(Book book) {
+        if (book.getBookId() == null) {
+            return bookMapper.insert(book);
+        } else {
+            return bookMapper.update(book);
+        }
+    }
+
+    @Transactional
+    public int delete(Long bookId) {
+        return bookMapper.delete(bookId);
+    }
+
+    public List<Book> findOverdueBooks() {
+        return bookMapper.findOverdueBooks(LocalDate.now());
+    }
+
+    public List<Book> findLowStockBooks(int minStock) {
+        return bookMapper.findLowStockBooks(minStock);
+    }
+
+    public List<Book> findOutOfStockBooks() {
+        return bookMapper.findOutOfStockBooks();
+    }
+
+    public List<Book> findMostPopularBooks(int limit) {
+        return bookMapper.findMostPopularBooks(limit);
+    }
+
+    @Transactional
+    public boolean borrowBook(Long bookId, String borrower, LocalDate expectedReturnDate) {
+        Book book = findById(bookId);
+        if (book == null || book.getStatus() != 0) {
+            return false;
+        }
+
+        int stockResult = bookMapper.decrementStock(bookId);
+        if (stockResult <= 0) {
+            return false;
+        }
+
+        int borrowResult = bookMapper.updateBorrowStatus(
+            bookId, 
+            1, // 貸出中ステータス
+            LocalDate.now(),
+            borrower,
+            expectedReturnDate
+        );
+
+        if (borrowResult <= 0) {
+            return false;
+        }
+
+        // 貸出履歴を追加
+        BorrowingHistory history = new BorrowingHistory();
+        history.setBookId(bookId);
+        history.setUserId(getUserIdByUsername(borrower)); // ユーザーIDを取得
+        history.setBorrowedDate(LocalDate.now());
+        history.setExpectedReturnDate(expectedReturnDate);
+        history.setExtensionCount(0);
+        history.setStatus(BorrowingHistory.STATUS_BORROWED);
+
+        int historyResult = borrowingHistoryMapper.insert(history);
+        if (historyResult <= 0) {
+            // 貸出履歴の追加に失敗した場合、トランザクションがロールバックされます
+            return false;
+        }
+
+        return true;
+    }
+
+    @Transactional
+    public boolean returnBook(Long bookId) {
+        try {
+            Book book = findById(bookId);
+            if (book == null || book.getStatus() != 1) {
+                return false;
+            }
+
+            // まず、貸出履歴を取得して更新
+            BorrowingHistory history = borrowingHistoryMapper.findByBookId(bookId)
+                .stream()
+                .filter(h -> h.getReturnedDate() == null)
+                .findFirst()
+                .orElse(null);
+
+            if (history == null) {
+                return false;
+            }
+
+            // 貸出履歴を返却済みに更新
+            LocalDate now = LocalDate.now();
+            int historyResult = borrowingHistoryMapper.updateReturn(
+                history.getHistoryId(),
+                now,
+                BorrowingHistory.STATUS_RETURNED
+            );
+            
+            if (historyResult <= 0) {
+                throw new RuntimeException("貸出履歴の更新に失敗しました");
+            }
+
+            // 在庫を増やす
+            int stockResult = bookMapper.incrementStock(bookId);
+            if (stockResult <= 0) {
+                throw new RuntimeException("在庫数の更新に失敗しました");
+            }
+
+            // 書籍のステータスを更新
+            int returnResult = bookMapper.updateBorrowStatus(
+                bookId,
+                0, // 利用可能ステータス
+                null,
+                null,
+                null
+            );
+            if (returnResult <= 0) {
+                throw new RuntimeException("書籍ステータスの更新に失敗しました");
+            }
+
+            return true;
+        } catch (Exception e) {
+            // 例外が発生した場合、トランザクションは自動的にロールバックされます
+            return false;
+        }
+    }
+
+    public List<Book> findBooksNeedingInventory(LocalDate date) {
+        return bookMapper.findBooksNeedingInventory(date);
+    }
+
+    @Transactional
+    public boolean updateInventory(Long bookId, Integer actualStock, Integer condition) {
+        Book book = findById(bookId);
         if (book == null) {
-            throw new IllegalArgumentException("指定された書籍が見つかりません：" + bookId);
+            return false;
         }
-        return book;
+
+        book.setStockQuantity(actualStock);
+        book.setCondition(condition);
+        book.setLastInventoryDate(LocalDate.now());
+
+        return bookMapper.update(book) > 0;
     }
 
-    /**
-     * 新規書籍を登録
-     * @param book 書籍情報
-     * @return 登録された書籍情報
-     */
+    public boolean isAvailableForBorrowing(Long bookId) {
+        Book book = findById(bookId);
+        return book != null && 
+               book.getStatus() == 0 && 
+               book.getStockQuantity() > 0;
+    }
+
+    public boolean isOverdue(Book book) {
+        if (book.getStatus() != 1 || book.getExpectedReturnDate() == null) {
+            return false;
+        }
+        return LocalDate.now().isAfter(book.getExpectedReturnDate());
+    }
+
     @Transactional
-    public Book createBook(Book book) {
-        validateBook(book);
-        bookMapper.insert(book);
-        return book;
+    public boolean extendBorrowing(Long bookId, LocalDate newExpectedReturnDate) {
+        Book book = findById(bookId);
+        if (book == null || book.getStatus() != 1) {
+            return false;
+        }
+
+        // 貸出履歴を更新
+        BorrowingHistory history = borrowingHistoryMapper.findByBookId(bookId)
+            .stream()
+            .filter(h -> h.getReturnedDate() == null)
+            .findFirst()
+            .orElse(null);
+
+        if (history != null) {
+            history.setExpectedReturnDate(newExpectedReturnDate);
+            history.setStatus(BorrowingHistory.STATUS_EXTENDED);
+            borrowingHistoryMapper.updateExtension(history.getHistoryId(), newExpectedReturnDate);
+        }
+
+        book.setExpectedReturnDate(newExpectedReturnDate);
+        return bookMapper.update(book) > 0;
     }
 
-    /**
-     * 書籍情報を更新
-     * @param book 書籍情報
-     * @return 更新された書籍情報
-     */
     @Transactional
-    public Book updateBook(Book book) {
-        validateBook(book);
-        if (bookMapper.update(book) == 0) {
-            throw new IllegalArgumentException("指定された書籍が見つかりません：" + book.getBookId());
+    public boolean updateBookCondition(Long bookId, Integer newCondition, String notes) {
+        Book book = findById(bookId);
+        if (book == null) {
+            return false;
         }
-        return book;
+
+        book.setCondition(newCondition);
+        book.setNotes(notes);
+        return bookMapper.update(book) > 0;
     }
 
-    /**
-     * 書籍を削除
-     * @param bookId 書籍ID
-     * @throws IllegalArgumentException 書籍が存在しない場合
-     */
-    @Transactional
-    public void deleteBook(Long bookId) {
-        if (bookMapper.delete(bookId) == 0) {
-            throw new IllegalArgumentException("指定された書籍が見つかりません：" + bookId);
-        }
-    }
-
-    /**
-     * 書籍を貸し出し
-     * @param book 貸出情報を含む書籍情報
-     * @return 更新された書籍情報
-     */
-    @Transactional
-    public Book borrowBook(Book book) {
-        if (bookMapper.borrow(book) == 0) {
-            throw new IllegalStateException("書籍の貸出に失敗しました。既に貸出中の可能性があります：" + book.getBookId());
-        }
-        return book;
-    }
-
-    /**
-     * 書籍を返却
-     * @param bookId 書籍ID
-     */
-    @Transactional
-    public void returnBook(Long bookId) {
-        if (bookMapper.returnBook(bookId) == 0) {
-            throw new IllegalStateException("書籍の返却に失敗しました。貸出中でない可能性があります：" + bookId);
-        }
-    }
-
-    /**
-     * 書籍情報の入力値検証
-     * @param book 検証対象の書籍情報
-     * @throws IllegalArgumentException 入力値が不正な場合
-     */
-    private void validateBook(Book book) {
-        if (book.getTitle() == null || book.getTitle().trim().isEmpty()) {
-            throw new IllegalArgumentException("タイトルは必須です");
-        }
-        if (book.getAuthor() == null || book.getAuthor().trim().isEmpty()) {
-            throw new IllegalArgumentException("著者は必須です");
-        }
-        if (book.getCategory() == null || book.getCategory().trim().isEmpty()) {
-            throw new IllegalArgumentException("カテゴリは必須です");
-        }
-        if (book.getPublishDate() == null) {
-            throw new IllegalArgumentException("出版日は必須です");
-        }
-        if (book.getPrice() == null || book.getPrice() < 0) {
-            throw new IllegalArgumentException("価格は0以上の値を指定してください");
-        }
+    // ユーザー名からユーザーIDを取得するヘルパーメソッド
+    private Long getUserIdByUsername(String username) {
+        return bookMapper.findUserIdByUsername(username);
     }
 }

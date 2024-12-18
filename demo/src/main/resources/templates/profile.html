@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/layout :: head">
+</head>
+<body>
+    <!-- サイドバー -->
+    <nav th:replace="fragments/layout :: sidebar"></nav>
+
+    <main>
+        <div class="profile-container">
+            <!-- アラートメッセージ -->
+            <div th:if="${success}" class="alert alert-success">
+                <i class="fas fa-check-circle"></i>
+                <span th:text="${success}">更新が完了しました</span>
+            </div>
+            <div th:if="${error}" class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <span th:text="${error}">エラーが発生しました</span>
+            </div>
+
+            <!-- プロフィールヘッダー -->
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    <i class="fas fa-user fa-3x"></i>
+                </div>
+                <div class="profile-info">
+                    <h1 th:text="${user.displayName}">表示名</h1>
+                    <div class="profile-role" th:text="${user.role == 'ROLE_ADMIN' ? '管理者' : '一般ユーザー'}">
+                        ユーザー権限
+                    </div>
+                    <div class="profile-username">
+                        <small>@</small><span th:text="${user.username}">ユーザー名</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- プロフィール編集 -->
+            <div class="profile-section">
+                <h2 class="section-title">
+                    <i class="fas fa-user-edit"></i>
+                    プロフィール設定
+                </h2>
+                <form th:action="@{/profile/update}" method="post" th:object="${user}">
+                    <div class="form-group">
+                        <label for="username">ユーザー名</label>
+                        <input type="text" id="username" th:field="*{username}" readonly>
+                        <div class="form-hint">ユーザー名は変更できません</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="displayName">表示名</label>
+                        <input type="text" id="displayName" th:field="*{displayName}" required>
+                        <div class="form-hint">50文字以内で入力してください</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">メールアドレス</label>
+                        <input type="email" id="email" th:field="*{email}" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- パスワード変更 -->
+            <div class="profile-section">
+                <h2 class="section-title">
+                    <i class="fas fa-lock"></i>
+                    パスワード変更
+                </h2>
+                <form th:action="@{/profile/change-password}" method="post">
+                    <div class="form-group">
+                        <label for="currentPassword">現在のパスワード</label>
+                        <input type="password" id="currentPassword" name="currentPassword" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">新しいパスワード</label>
+                        <input type="password" id="newPassword" name="newPassword" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">新しいパスワード（確認）</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-key"></i>
+                            パスワードを変更
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // パスワード確認のバリデーション
+        document.querySelector('form[action="/profile/change-password"]').addEventListener('submit', function(e) {
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                e.preventDefault();
+                alert('新しいパスワードが一致しません');
+            }
+        });
+    </script>
+
+    <style>
+        .profile-username {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 0.5rem;
+        }
+        .form-hint {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+    </style>
+</body>
+</html>
