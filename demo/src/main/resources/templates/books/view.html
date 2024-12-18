@@ -107,10 +107,6 @@
                         <span class="info-value" th:text="${#numbers.formatInteger(book.price, 0, 'COMMA') + '円'}">価格</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">在庫数:</span>
-                        <span class="info-value" th:text="${book.stockQuantity}">在庫数</span>
-                    </div>
-                    <div class="info-item">
                         <span class="info-label">貸出回数:</span>
                         <span class="info-value" th:text="${book.borrowCount}">貸出回数</span>
                     </div>

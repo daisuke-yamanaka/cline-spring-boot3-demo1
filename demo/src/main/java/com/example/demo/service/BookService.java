@@ -44,6 +44,11 @@ public class BookService {
         return bookMapper.findByCategoryAndStatus(category, status);
     }
 
+    public List<Book> findOutOfStockBooks() {
+        // status = 1（貸出中）の本を検索
+        return bookMapper.findByStatus(1);
+    }
+
     public List<Book> searchBooksWithFilters(String keyword, String category, Integer status) {
         // キーワードがnullまたは空文字の場合は、そのままnullを渡す
         if (keyword != null && !keyword.trim().isEmpty()) {
@@ -157,14 +162,6 @@ public class BookService {
         return bookMapper.findOverdueBooks(LocalDate.now());
     }
 
-    public List<Book> findLowStockBooks(int minStock) {
-        return bookMapper.findLowStockBooks(minStock);
-    }
-
-    public List<Book> findOutOfStockBooks() {
-        return bookMapper.findOutOfStockBooks();
-    }
-
     public List<Book> findMostPopularBooks(int limit) {
         return bookMapper.findMostPopularBooks(limit);
     }
@@ -173,11 +170,6 @@ public class BookService {
     public boolean borrowBook(Long bookId, String borrower, LocalDate expectedReturnDate) {
         Book book = findById(bookId);
         if (book == null || book.getStatus() != 0) {
-            return false;
-        }
-
-        int stockResult = bookMapper.decrementStock(bookId);
-        if (stockResult <= 0) {
             return false;
         }
 
@@ -242,12 +234,6 @@ public class BookService {
                 throw new RuntimeException("貸出履歴の更新に失敗しました");
             }
 
-            // 在庫を増やす
-            int stockResult = bookMapper.incrementStock(bookId);
-            if (stockResult <= 0) {
-                throw new RuntimeException("在庫数の更新に失敗しました");
-            }
-
             // 書籍のステータスを更新
             int returnResult = bookMapper.updateBorrowStatus(
                 bookId,
@@ -272,13 +258,12 @@ public class BookService {
     }
 
     @Transactional
-    public boolean updateInventory(Long bookId, Integer actualStock, Integer condition) {
+    public boolean updateInventory(Long bookId, Integer condition) {
         Book book = findById(bookId);
         if (book == null) {
             return false;
         }
 
-        book.setStockQuantity(actualStock);
         book.setCondition(condition);
         book.setLastInventoryDate(LocalDate.now());
 
@@ -287,9 +272,7 @@ public class BookService {
 
     public boolean isAvailableForBorrowing(Long bookId) {
         Book book = findById(bookId);
-        return book != null && 
-               book.getStatus() == 0 && 
-               book.getStockQuantity() > 0;
+        return book != null && book.getStatus() == 0;
     }
 
     public boolean isOverdue(Book book) {

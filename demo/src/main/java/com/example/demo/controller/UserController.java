@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 @Controller
 @RequestMapping("/users")
@@ -33,6 +34,19 @@ public class UserController {
         model.addAttribute("blockedUsers", userService.getBlockedUsers());
         
         return "users/manage";
+    }
+
+    // 統計情報を取得するAPIエンドポイント
+    @GetMapping("/api/stats")
+    @PreAuthorize("hasRole('ADMIN')")
+    @ResponseBody
+    public ResponseEntity<Map<String, Long>> getUserStats() {
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("totalUsers", (long) userService.getTotalUsers());
+        stats.put("adminCount", (long) userService.getAdminCount());
+        stats.put("activeUsers", (long) userService.getActiveUsers());
+        stats.put("blockedUsers", (long) userService.getBlockedUsers());
+        return ResponseEntity.ok(stats);
     }
 
     // 以下はREST API用のエンドポイント

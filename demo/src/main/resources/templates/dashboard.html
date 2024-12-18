@@ -16,18 +16,6 @@
 
         <!-- アラートセクション（管理者のみ） -->
         <div class="alert-section" sec:authorize="hasRole('ROLE_ADMIN')">
-            <div class="alert alert-danger" th:if="${outOfStockAlert}">
-                <i class="fas fa-exclamation-circle"></i>
-                <div>
-                    <strong>在庫切れ警告</strong>
-                    <p>在庫数が0の書籍があります。確認してください。</p>
-                    <ul class="alert-details">
-                        <li th:each="book : ${outOfStockBooks}">
-                            <span th:text="${book.title}">書籍タイトル</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
             <div class="alert alert-danger" th:if="${overdueAlert}">
                 <i class="fas fa-exclamation-circle"></i>
                 <div>
@@ -77,6 +65,10 @@
                     <div class="book-info">
                         <div class="book-title" th:text="${book.title}">書籍タイトル</div>
                         <div class="book-author" th:text="${book.author}">著者名</div>
+                        <div class="book-borrow-count">
+                            <i class="fas fa-chart-line"></i>
+                            <span th:text="${book.borrowCount}">0</span>回貸出
+                        </div>
                     </div>
                     <span class="book-status" 
                           th:class="${book.status == 0 ? 'status-available' : 'status-borrowed'}"
@@ -90,5 +82,17 @@
             </div>
         </div>
     </main>
+
+    <style>
+    .book-borrow-count {
+        font-size: 0.9em;
+        color: #666;
+        margin-top: 4px;
+    }
+    .book-borrow-count i {
+        margin-right: 4px;
+        color: #4CAF50;
+    }
+    </style>
 </body>
 </html>

@@ -30,9 +30,6 @@ public class Book {
     /** 価格 */
     private Integer price;
     
-    /** 在庫数 */
-    private Integer stockQuantity;
-    
     /** 書籍の状態（0:新品, 1:良好, 2:傷あり, 3:修理必要） */
     private Integer condition;
     

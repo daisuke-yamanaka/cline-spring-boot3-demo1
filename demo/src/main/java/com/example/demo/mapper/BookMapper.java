@@ -104,18 +104,17 @@ public interface BookMapper {
     );
 
     @Insert("INSERT INTO books (isbn, title, author, category, publish_date, price, " +
-            "stock_quantity, condition, is_ebook, status, rating, borrow_count, " +
+            "condition, is_ebook, status, rating, borrow_count, " +
             "disposal_date, last_inventory_date, notes) " +
             "VALUES (#{isbn}, #{title}, #{author}, #{category}, #{publishDate}, #{price}, " +
-            "#{stockQuantity}, #{condition}, #{isEbook}, #{status}, #{rating}, #{borrowCount}, " +
+            "#{condition}, #{isEbook}, #{status}, #{rating}, #{borrowCount}, " +
             "#{disposalDate}, #{lastInventoryDate}, #{notes})")
     @Options(useGeneratedKeys = true, keyProperty = "bookId")
     int insert(Book book);
 
     @Update("UPDATE books SET isbn = #{isbn}, title = #{title}, author = #{author}, " +
             "category = #{category}, publish_date = #{publishDate}, price = #{price}, " +
-            "stock_quantity = #{stockQuantity}, condition = #{condition}, " +
-            "is_ebook = #{isEbook}, borrowed_date = #{borrowedDate}, " +
+            "condition = #{condition}, is_ebook = #{isEbook}, borrowed_date = #{borrowedDate}, " +
             "borrower = #{borrower}, expected_return_date = #{expectedReturnDate}, " +
             "status = #{status}, rating = #{rating}, borrow_count = #{borrowCount}, " +
             "disposal_date = #{disposalDate}, last_inventory_date = #{lastInventoryDate}, " +
@@ -128,20 +127,21 @@ public interface BookMapper {
     @Select("SELECT * FROM books WHERE expected_return_date <= #{date} AND status = 1")
     List<Book> findOverdueBooks(LocalDate date);
 
-    @Select("SELECT * FROM books WHERE stock_quantity < #{minStock}")
-    List<Book> findLowStockBooks(int minStock);
-
-    @Select("SELECT * FROM books WHERE stock_quantity = 0")
-    List<Book> findOutOfStockBooks();
-
-    @Select("SELECT * FROM books ORDER BY borrow_count DESC LIMIT #{limit}")
-    List<Book> findMostPopularBooks(int limit);
-
-    @Update("UPDATE books SET stock_quantity = stock_quantity - 1 WHERE book_id = #{bookId}")
-    int decrementStock(Long bookId);
-
-    @Update("UPDATE books SET stock_quantity = stock_quantity + 1 WHERE book_id = #{bookId}")
-    int incrementStock(Long bookId);
+    @Select("WITH RankedBooks AS (" +
+            "    SELECT b.*, " +
+            "           ROW_NUMBER() OVER (PARTITION BY b.isbn ORDER BY b.publish_date DESC) as rn, " +
+            "           SUM(b.borrow_count) OVER (PARTITION BY b.isbn) as total_borrows " +
+            "    FROM books b" +
+            ") " +
+            "SELECT book_id, isbn, title, author, category, publish_date, price, " +
+            "       condition, is_ebook, status, rating, borrow_count, " +
+            "       disposal_date, last_inventory_date, notes, " +
+            "       borrowed_date, borrower, expected_return_date " +
+            "FROM RankedBooks " +
+            "WHERE rn = 1 " +
+            "ORDER BY total_borrows DESC, publish_date DESC " +
+            "LIMIT #{limit}")
+    List<Book> findMostPopularBooks(@Param("limit") int limit);
 
     @Update("UPDATE books SET status = #{status}, borrowed_date = #{borrowedDate}, " +
             "borrower = #{borrower}, expected_return_date = #{expectedReturnDate}, " +

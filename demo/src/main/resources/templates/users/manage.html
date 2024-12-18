@@ -150,6 +150,26 @@
             return options;
         }
 
+        // 統計情報を更新する関数
+        async function updateStats() {
+            try {
+                const response = await fetch('/users/api/stats', getFetchOptions());
+                if (!response.ok) {
+                    throw new Error('Failed to fetch stats');
+                }
+                const stats = await response.json();
+                
+                // 統計情報を更新
+                const statCards = document.querySelectorAll('.stat-card .stat-number');
+                statCards[0].textContent = stats.totalUsers;
+                statCards[1].textContent = stats.adminCount;
+                statCards[2].textContent = stats.activeUsers;
+                statCards[3].textContent = stats.blockedUsers;
+            } catch (error) {
+                console.error('Error updating stats:', error);
+            }
+        }
+
         const grid = new gridjs.Grid({
             columns: [
                 { id: 'userId', name: 'ID' },
@@ -252,6 +272,7 @@
                 .then(handleResponse)
                 .then(() => {
                     grid.forceRender();
+                    updateStats(); // 統計情報を更新
                 })
                 .catch(error => {
                     alert(error.message);
@@ -291,6 +312,7 @@
                 bootstrap.Modal.getInstance(document.getElementById('userFormModal')).hide();
                 document.getElementById('userForm').reset();
                 grid.forceRender();
+                updateStats(); // 統計情報を更新
             })
             .catch(error => {
                 alert(error.message);

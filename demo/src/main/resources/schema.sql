@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- 書籍テーブル
--- 図書館の蔵書情報を管理するテーブル
+-- 図書館の蔵書情報を管理するテーブル（1冊1レコード方式）
 -- book_id: 書籍の一意識別子
 -- isbn: 国際標準図書番号（13桁）
 -- title: 書籍のタイトル
@@ -40,7 +40,6 @@ CREATE TABLE IF NOT EXISTS users (
 -- category: 書籍のカテゴリ
 -- publish_date: 出版日
 -- price: 価格
--- stock_quantity: 在庫数
 -- condition: 本の状態（0:良好, 1:普通, 2:傷あり等）
 -- is_ebook: 電子書籍かどうか
 -- borrowed_date: 現在の貸出日
@@ -60,7 +59,6 @@ CREATE TABLE IF NOT EXISTS books (
     category VARCHAR(50),
     publish_date DATE,
     price INT,
-    stock_quantity INT NOT NULL DEFAULT 0,
     condition INT NOT NULL DEFAULT 0,
     is_ebook BOOLEAN NOT NULL DEFAULT FALSE,
     borrowed_date DATE,
